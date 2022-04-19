@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: an-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - pathType: Prefix
+        path: "/one"
+        backend:
+          service:
+            name: myappone
+            port:
+              number: 8080
+      - pathType: Prefix
+        path: "/two"
+        backend:
+          service:
+            name: myapptwo
+            port:
+              number: 8080

@@ -1,0 +1,115 @@
+= Ingress
+
+
+----
+brew install kind
+----
+
+----
+cat <<EOF | kind create cluster --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+EOF
+----
+
+----
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+----
+
+----
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+----
+
+----
+kubectl get pods -n ingress-nginx
+NAME                                       READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-dfzdq       0/1     Completed   0          20s
+ingress-nginx-admission-patch-5q5pw        0/1     Completed   0          20s
+ingress-nginx-controller-58fdb7bb4-q4m2f   1/1     Running     0          20s
+----
+
+2 Deployments
+
+----
+kubectl create namespace mystuff
+kubectl config set-context --current --namespace=mystuff
+
+kubectl create deployment myappone --image=docker.io/burrsutter/hello
+kubectl create deployment myapptwo --image=docker.io/burrsutter/hello
+
+kubectl set env deployment myappone GREETING="One" 
+kubectl set env deployment myapptwo GREETING="Two" 
+----
+
+Test env vars
+----
+kubectl exec -it $(kubectl get pods -l app=myappone -oname) -- curl localhost:8080
+----
+
+----
+One from Quarkus! 1 on myappone-bbb449976-gpmqj
+----
+
+----
+kubectl exec -it $(kubectl get pods -l app=myapptwo -oname) -- curl localhost:8080
+----
+
+----
+Two from Quarkus! 1 on myapptwo-67c84b6544-pxjxv
+----
+
+
+2 Services
+
+----
+kubectl expose deployment myappone --port=8080 --type=ClusterIP
+kubectl expose deployment myapptwo --port=8080 --type=ClusterIP
+----
+
+----
+kubectl get services
+NAME       TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+myappone   ClusterIP   10.96.19.65    <none>        8080/TCP   4s
+myapptwo   ClusterIP   10.96.73.179   <none>        8080/TCP   4s
+----
+
+----
+kubectl apply -f ingress-1.yaml
+----
+
+----
+curl -v  localhost/one
+*   Trying 127.0.0.1:80...
+* Connected to localhost (127.0.0.1) port 80 (#0)
+> GET /one HTTP/1.1
+> Host: localhost
+> User-Agent: curl/7.79.1
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 404 Not Found
+< Date: Mon, 18 Apr 2022 23:29:16 GMT
+< Content-Length: 0
+< Connection: keep-alive
+<
+----
+
+

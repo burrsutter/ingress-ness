@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: one-two-localhost
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: one.localdev.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: myappone
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+  - host: two.localdev.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: myapptwo
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
